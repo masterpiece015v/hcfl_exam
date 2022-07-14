@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <title>級の選択</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> 
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" crossorigin="anonymous">
+</head>
+<body>
+    
+    <div class="container">
+        <div class="row" style="margin-top:100px;">
+            <div class="col">
+                <h1>級の選択</h1>
+                <table class="table">
+                {% for item in question %}
+                <tr>
+                <form action="{% url 'question' 1 %}" method="post">
+                    {% csrf_token %}
+                    <td><input type="text" value="{{kind}}" name="kind" class="form-control" size="5" readonly></td>
+                    <td><input type="text" value="{{item.grade}}" name="grade" class="form-control" size="5" readonly></td>
+                    <td>
+                    <select name="num" class="form-control">
+                        <option>10</option>
+                        <option>15</option>
+                        <option>20</option>
+                        <option>25</option>
+                        <option>30</option>
+                    </select>
+                    </td>
+                    <td><input type="submit" value="select" class="btn btn-primary"></td>
+                </form>
+                </tr>
+                {% endfor %} 
+                </table>
+                
+            </div>
+        </div>
+    </div>
+
+</body>  
+</html>

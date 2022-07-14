@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <title>ログイン</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> 
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" crossorigin="anonymous">
+</head>
+<body>
+    
+    <div class="container">
+
+        <div class="row" style="margin-top:100px;">
+            <div class="col">
+                <h1>ログイン</h1>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-6 col-12">
+                <form action="{% url 'index' %}" method="POST">
+                    {% csrf_token %}
+                    {{form.as_p}}
+                    <input type="submit" value="ログイン" class="btn btn-primary mt-2">
+                </form>
+            </div>
+            <div class="col-lg-6 col-12">
+                <p>ユーザの新規作成は<a href="{% url 'new_user' %}">こちら</a>から</p>
+                <p style="color:red;">{{message}}</p>
+            </div>
+        </div>
+        
+    </div>
+
+</body>  
+</html>
