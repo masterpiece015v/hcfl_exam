@@ -20,8 +20,8 @@ from . import views
 urlpatterns = [
     path('', views.index , name='index'),
     path('new_user/',views.new_user,name='new_user'),
-    #path('select_menu/',views.select_menu,name='select_menu'),
+    path('select_menu/',views.select_menu,name='select_menu'),
     path('select_grade/<str:kind>',views.select_grade,name='select_grade'),
     path('question/<int:no>/',views.question,name='question'),
-
+    path('question_update/',views.question_update,name='question_update'),
 ]

@@ -1,4 +1,5 @@
 from django.db import models
+from datetime import datetime
 
 # Create your models here.
 
@@ -6,6 +7,7 @@ class User( models.Model ):
     user_id = models.CharField(max_length=40)
     password = models.CharField(max_length=40)
     user_name = models.CharField(max_length=40)
+    super_user = models.BooleanField(default=False)
 
 class Question( models.Model ):
     kind = models.CharField( max_length=20 )
@@ -21,3 +23,4 @@ class Test( models.Model ):
     user = models.ForeignKey(User,on_delete=models.CASCADE)
     question = models.ForeignKey(Question,on_delete=models.CASCADE)
     answers = models.CharField(max_length=40)
+    update = models.DateTimeField(default=datetime.now)

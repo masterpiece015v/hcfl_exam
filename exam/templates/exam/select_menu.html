@@ -9,6 +9,15 @@
 <body>
     
     <div class="container">
+        <div class="row">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                      <li class="breadcrumb-item active" aria-current="page">Select_Menu</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
         <div class="row" style="margin-top:100px;">
             <div class="col">
                 <h1>メニューの選択</h1>
@@ -16,6 +25,11 @@
                 <a href="{% url 'select_grade' item.kind %}" class="btn btn-primary">{{item.kind}}</a>
                 {% endfor %}
                 <a href="#" class="btn btn-primary">成績</a>
+
+                {% if super_user %}
+                <a href="#" class="btn btn-primary">学生成績</a>
+                <a href="{% url 'question_update' %}" class="btn btn-primary">問題更新</a>
+                {% endif %}
             </div>
         </div>
     </div>
