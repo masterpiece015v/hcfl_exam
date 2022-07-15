@@ -4,7 +4,7 @@ from .models import User,Question,Test
 from django.db.models import Max,Q
 #from openpyxl import Workbook
 from django.conf import settings
-import os,json
+import os,json,random
 
 
 # Create your views here.
@@ -79,25 +79,59 @@ def select_grade( request , kind ):
 
     return render( request , 'exam/select_grade.html',params)
 
-def question( request , no ):
+def question( request ):
     if request.method == 'POST':
         user = User.objects.filter(user_id=request.session['user_id']).first()
-        kind = request.POST['kind']
-        grade = request.POST['grade']
-        num = request.POST['num']
+        if 'kind' in request.POST:
+            kind = request.POST['kind']
+            grade = request.POST['grade']
+            num = request.POST['num']
 
-        question = Question.objects.filter(kind=kind,grade=grade)
-        q_id_list = [que.id for que in question]
-        print( q_id_list )
+            question = Question.objects.filter(kind=kind,grade=grade)
+            q_id_list = [que.id for que in question]
+            #print( q_id_list )
+            #print( random.sample(range(len(q_id_list)),int(num)))
+            test_id_max = Test.objects.aggregate(Max('test_id'))
+            #print(test_id_max['test_id__max'] )
+            test_id_list = [q_id_list[i] for i in random.sample(range(len(q_id_list)),int(num))]
+            print( test_id_list )
+            if test_id_max['test_id__max'] == None:
+                test_id = 1
+            else:
+                test_id = test_id_max['test_id__max'] + 1
+            seq = 1
+            for i in test_id_list:
+                q = Question.objects.get(id=i)
+                t = Test(
+                test_id = test_id,
+                seq_no = seq,
+                user = user,
+                question = q,
+                )
+                t.save()
+                seq += 1
 
-        test_id_max = Test.objects.aggregate(Max('test_id'))
-        print(test_id_max['test_id__max'] )
-        if test_id_max['test_id__max'] == None:
-            test_id = 1
+            test = Test.objects.filter(test_id=test_id,seq_no=1).first()
+            params = {
+                'test':test,
+                'test_id':test_id,
+                'no': 1,
+            }
+            return render( request , 'exam/question.html',params )
         else:
-            test_id = test_id_max['test_id__max'] + 1
-    return render( request , 'exam/question.html')
+        
+            test_id = request.POST['test_id']
+            no = request.POST['no']
+            test = Test.objects.filter(test_id=test_id,seq_no=no).first()
+            params = {
+                'test':test,
+                'test_id':test_id,
+                'no': no,
+            }
 
+            return render( request , 'exam/question.html',params )
+    return render( request , 'exam/index.html' )
+    
 def question_update( request ):
     if request.method == 'POST':
         data = request.POST['data']

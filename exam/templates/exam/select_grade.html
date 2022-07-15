@@ -27,7 +27,7 @@
                 <table class="table">
                 {% for item in question %}
                 <tr>
-                <form action="{% url 'question' 1 %}" method="post">
+                <form action="{% url 'question' %}" method="post">
                     {% csrf_token %}
                     <td><input type="text" value="{{kind}}" name="kind" class="form-control" size="5" readonly></td>
                     <td><input type="text" value="{{item.grade}}" name="grade" class="form-control" size="5" readonly></td>
