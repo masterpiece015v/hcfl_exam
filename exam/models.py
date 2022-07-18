@@ -15,7 +15,7 @@ class Question( models.Model ):
     round = models.IntegerField()
     question_no = models.IntegerField()
     answer = models.CharField( max_length=40 )
-    file_path = models.CharField( max_length=200,blank=True,null=True )
+    file_name = models.CharField( max_length=200,blank=True,null=True )
 
 class Test( models.Model ):
     test_id = models.IntegerField(default=0)

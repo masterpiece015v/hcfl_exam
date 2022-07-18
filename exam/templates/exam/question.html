@@ -12,7 +12,7 @@
         <div class="row" style="margin-top:100px;">
             <div class="col">
                 <figure>
-                    <img src="" alg="">
+                    <img src="/media/exam/{{test.question.file_name}}" alg="">
                 </figure>
                 <form action="{% url 'question' %}" method="post">
                     {% csrf_token %}

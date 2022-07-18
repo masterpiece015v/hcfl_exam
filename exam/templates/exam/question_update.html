@@ -73,7 +73,19 @@
     <script>
         var data = [
             {% for item in data %}
-            [{{item.id}},'{{item.kind}}','{{item.grade}}',{{item.round}},{{item.question_no}},'{{item.answer}}','{{item.file_path}}'],
+                [{{item.id}},
+                '{{item.kind}}',
+                '{{item.grade}}',
+                {{item.round}},
+                {{item.question_no}},
+                '{{item.answer}}',
+                '{{item.file_name}}',
+                '<form action={% url "question_update" %} method="post" enctype="multipart/form-data">' + 
+                '{% csrf_token %}' +
+                '<input type="text" value="{{item.id}}" name="id" hidden>' +
+                '<input type="file" name="file">' +
+                '<input type="submit" value="up">' +
+                '</form>'],
             {% endfor %}
         ]
         var grid = document.getElementById('grid');
@@ -81,7 +93,7 @@
             grid,
             {
                 data:data,
-                colHeaders:['id','kind','grade','round','no','answer','file_path'],
+                colHeaders:['id','kind','grade','round','no','answer','file_name','up'],
                 columns:[
                     {type:'numeric',readOnly:true},
                     {type:'text'},
@@ -90,6 +102,7 @@
                     {type:'numeric'},
                     {type:'text'},
                     {type:'text'},
+                    {renderer:'html'},
                 ],
                 columnSorting:true,
                 contextMenu:true,

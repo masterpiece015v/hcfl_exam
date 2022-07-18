@@ -4,7 +4,7 @@ from .models import User,Question,Test
 from django.db.models import Max,Q
 #from openpyxl import Workbook
 from django.conf import settings
-import os,json,random
+import os,json,random,string
 
 
 # Create your views here.
@@ -116,6 +116,7 @@ def question( request ):
                 'test':test,
                 'test_id':test_id,
                 'no': 1,
+                'num' : num,
             }
             return render( request , 'exam/question.html',params )
         else:
@@ -127,6 +128,7 @@ def question( request ):
                 'test':test,
                 'test_id':test_id,
                 'no': no,
+                'num' : num,
             }
 
             return render( request , 'exam/question.html',params )
@@ -134,44 +136,88 @@ def question( request ):
     
 def question_update( request ):
     if request.method == 'POST':
-        data = request.POST['data']
-        json_data = json.loads( data )
-        
-        #削除
-        id_list = [q[0] for q in json_data]
-        q = Question.objects.filter(~Q(id__in=id_list)).delete()
+        if 'data' in request.POST:
+            data = request.POST['data']
+            json_data = json.loads( data )
+            
+            #削除
+            id_list = [q[0] for q in json_data]
+            q = Question.objects.filter(~Q(id__in=id_list)).delete()
 
-        #更新
-        print( id_list )
-        for item in json_data:
-            if item[0] != None:
-                q = Question.objects.get(id=item[0])
-                #存在するので更新
-                q.kind = item[1]
-                q.grade = item[2]
-                q.round = item[3]
-                q.question_no = item[4]
-                q.answer = item[5]
-                q.file_path = item[6]
-                q.save()
-            else:
-                #存在しないので追加
-                q = Question(kind=item[1],grade=item[2],round=item[3],question_no=item[4],answer=item[5],file_path=item[6])
-                q.save()
-        
-        
-        #print( q[0].id )
+            #更新
+            print( id_list )
+            for item in json_data:
+                if item[0] != None:
+                    q = Question.objects.get(id=item[0])
+                    #存在するので更新
+                    q.kind = item[1]
+                    q.grade = item[2]
+                    q.round = item[3]
+                    q.question_no = item[4]
+                    q.answer = item[5]
+                    q.file_path = item[6]
+                    q.save()
+                else:
+                    #存在しないので追加
+                    q = Question(kind=item[1],grade=item[2],round=item[3],question_no=item[4],answer=item[5],file_path=item[6])
+                    q.save()
+            
+            
+            #print( q[0].id )
 
-        #print( json_data )
+            #print( json_data )
+            question = Question.objects.all()
+            params = {
+                'data' : question,
+            }
+            return render( request,'exam/question_update.html',params )
+
+        
+        else:
+            #print( request.FILES )
+            f = request.FILES['file']
+            file_name = getrndstr(8)+'.png'
+            filepath = os.path.join( settings.MEDIA_ROOT , 'exam', file_name )
+
+            with open(os.path.join( filepath ),'wb+') as dest:
+                for chunk in f.chunks( f ):
+                    dest.write( chunk )
+            
+            id = request.POST["id"]
+            
+            q = Question.objects.get( id= id)
+            q.file_name = file_name
+            q.save()
+
+            question = Question.objects.all()
+            params = {
+                'data' : question,
+            }
+
+            return render( request,'exam/question_update.html',params)
+    else:
         question = Question.objects.all()
         params = {
             'data' : question,
         }
+        
         return render( request,'exam/question_update.html',params )
 
-    question = Question.objects.all()
-    params = {
-        'data' : question,
-    }
-    
-    return render( request,'exam/question_update.html',params )
+def getrndstr(n):
+    randlst = [random.choice(string.ascii_letters + string.digits) for i in range(n)]
+    return ''.join(randlst)
+
+"""
+def upload_file( reqeust ):
+    if request.method == 'POST':
+        form = UploadFileForm( request.POST,request.FILES)
+        if form.is_valid():
+            f = request.FILES['file']
+            with open() as dest:
+                for chunk in f.chunks()
+                    dest.write( chunk )
+            return render()
+    else:
+        form= UploadFileForm()
+        return render( request,'exam/upload.html',{'form':form}) 
+"""

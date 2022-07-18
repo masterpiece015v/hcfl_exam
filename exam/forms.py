@@ -1,4 +1,3 @@
-from socket import fromshare
 from django import forms
 from .models import User
 
@@ -15,3 +14,8 @@ class UserForm( forms.ModelForm ):
             'password':forms.TextInput(attrs={'class':'form-control'}),
             'user_name':forms.TextInput(attrs={'class':'form-control'})
         }
+
+class UploadFileForm( forms.Form ):
+    title = forms.CharField( max_length=50 )
+    file = forms.FileField()
+
