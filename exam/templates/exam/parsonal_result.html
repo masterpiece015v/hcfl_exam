@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <title>個人成績</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> 
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" crossorigin="anonymous">
+</head>
+<body>
+    <div class="container">
+
+        <div class="row">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                      <li class="breadcrumb-item"><a href="{% url 'select_menu' %}">Select_Menu</a></li>
+                      <li class="breadcrumb-item"><a href="{% url 'select_grade' kind %}">{{kind}}</a></li>
+                      <li class="breadcrumb-item active" aria-current="page">成績</li>
+                    </ol>
+                  </nav>
+            </div>
+        </div>
+
+        <div class="row" style="margin-top:20px;">
+            <div class="col">
+                <h1>個人成績</h1>
+                <p>{{user_name}} {{score}}/{{num}}</p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <table class="table">
+                <tr>
+                    <th>Question</th>
+                    <th>Answer</th>
+                    <th>Your Answer</th>
+                    <th>Result</th>
+                </tr>
+                {% for item in result %}
+                <tr>
+                    <td>
+                        <figure class="figure">
+                            <figcaption class="figure-caption">
+                                {{item.question.kind}}{{item.question.grade}}/第{{item.question.round}}回
+                            </figcaption>                            
+                            <img src="/media/exam/{{item.question.file_name}}" style="width:500px;" alt="{{item.question.kind}}{{item.question.grade}}/第{{item.question.round}}回">
+                        </figure>
+                        
+                    </td>
+                    <td>{{item.question.answer}}</td>
+                    <td>{{item.answers}}</td>
+                    <td>{% if item.question.answer == item.answers %}正解{% else %}不正解{% endif %}</td>
+                </tr>
+                {% endfor %}
+                </table>
+                
+            </div>
+        </div>
+    </div>
+</body>  
+</html>

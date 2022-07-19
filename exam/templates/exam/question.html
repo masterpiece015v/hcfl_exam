@@ -3,43 +3,160 @@
 <head>
     <title>問題</title>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> 
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <style type="text/css">
+        .ans{
+            opacity:0.2;
+        }
+        input:checked + .ans{
+            opacity:1;
+        }
+    </style>
 </head>
 <body>
-    
-    <div class="container">
-        <div class="row" style="margin-top:100px;">
+    <div class="container-fluid">
+        <div class="row" style="margin-top:20px;">
             <div class="col">
-                <figure>
-                    <img src="/media/exam/{{test.question.file_name}}" alg="">
-                </figure>
-                <form action="{% url 'question' %}" method="post">
+                <form action="{% url 'question' %}" method="post" id="form_area">
                     {% csrf_token %}
-                    <input type="text" name="test_id" value="{{test_id}}" hidden>
-                    <input type="text" name="no" value="{{no|add:'1'}}" hidden>
-                    <div class="form-check">
-                        <input type="radio" name="ans" value="1" class="form-check-input" id="r1">
-                        <label class="form-check-label" for="r1">1</label>
-                    </div>
-                    <div class="form-check">
-                        <input type="radio" name="ans" value="2"class="form-check-input" id="r2">
-                        <label class="form-check-label" for="r2">2</label>
-                    </div>
-                    <div class="form-check">
-                        <input type="radio" name="ans" value="3"class="form-check-input" id="r3">
-                        <label class="form-check-label" for="r3">3</label>
-                    </div>
-                    <div class="form-check">
-                        <input type="radio" name="ans" value="4"class="form-check-input" id="r4">
-                        <label class="form-check-label" for="r4">4</label>
-                    </div>
+                    test id:<input type="text" name="test_id" value="{{test_id}}" id="test_id" style="border:none" size="4">
+                    no:<input type="text" id="no" name="no" value="{{no}}" style="border:none" size="4">
+                    問題数:<input type="text" id="num" name="num" value="{{num}}" style="border:none" size="4">
+                    <input type="text" id="state" name="state"  value="" hidden>
 
-                    <input type="submit" value="next" class="btn btn-primary">
+                    <div class="row overflow-scroll"" style="border:1px solid #ccc;padding:5px;height:250px;">
+                        <div class="col-10">
+                            <figure>
+                                <img src="/media/exam/{{file_name}}" alg="" id="img" class="img-fluid" style="width:100%">
+                            </figure>
+                        </div>
+                    </div>
+                    <div class="row" style="border:1px solid #ccc;padding:5px;">
+                        <div class="col-12">
+                            <label>
+                                <input type="radio" name="ans" value="1" id="r1" hidden>
+                                <span class="ans btn btn-primary" style="width:50px">1</span>
+                            </label>
+                            <label>
+                                <input type="radio" name="ans" value="2" id="r2" hidden>
+                                <span class="ans btn btn-primary" style="width:50px">2</span>
+                            </label>
+                            <label>
+                                <input type="radio" name="ans" value="3" id="r3" hidden>
+                                <span class="ans btn btn-primary" style="width:50px">3</span>
+                            </label>
+                            <label>
+                                <input type="radio" name="ans" value="4" id="r4" hidden>
+                                <span class="ans btn btn-primary" style="width:50px">4</span>
+                            </label>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>
+        <div class="row" style="border:1px solid #ccc;padding:5px;position:absolute;bottom:0;" >
+            <div class="col">
+                <input type="button" id="back" value="back" class="btn btn-outline-secondary" disabled="true" style="width:100px;">
+            </div>
+            <div class="col">
+                <input type="button" id="next" value="next" class="btn btn-outline-secondary" style="width:100px;">
+            </div>
+            <div class="col">
+                <input type="button" id="end" value="end" class="btn btn-outline-secondary" style="width:100px;">
+            </div>
+        </div>
     </div>
+<script>
 
+function getCookie( name ){
+    var cookieValue = null;
+    if( document.cookie && document.cookie !== ''){
+        var cookies = document.cookie.split(';');
+        for( var i = 0 ; i < cookies.length; i++ ){
+            var cookie = cookies[i].trim();
+            if( cookie.substring(0,name.length + 1)===(name+'=')){
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+var csrftoken = getCookie('csrftoken');
+
+function csrfSafeMethod( method ){
+    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+}
+$.ajaxSetup({
+    beforeSend: function( xhr , settings){
+        if(!csrfSafeMethod(settings.type) && !this.crossDomain){
+            xhr.setRequestHeader("X-CSRFToken",csrftoken);
+        }
+    }
+})
+
+window.addEventListener("load",function(){
+    $("#next").on("click",function(){submit('next');});
+    $("#back").on("click",function(){submit('back');});
+    $("#end").on("click",function(){submit_end('end');});
+});
+
+function submit_end( state ){
+    $("#state").val( state );
+    $("form").submit();
+}
+
+function submit(state){
+    let form_elem = "#form_area";
+    $("#state").val( state );
+    let data = new FormData($(form_elem).get(0));
+    console.log( data );
+    let url = $(form_elem).prop("action");
+    let method = $(form_elem).prop("method");
+
+    for( let v of data){console.log(v);}
+    for( let v of data.entries() ){ console.log(v);}
+
+    $.ajax({
+        url:url,
+        type:method,
+        data:data,
+        processData:false,
+        contentType:false,
+        dataType:'json'
+    }).done(function(data,status,xhr){
+        if( data.error){
+            //console.log("ERROR");
+        }else{
+            //console.log( data );
+            $("#no").val( data.no );
+            $("#img").attr('src', '/media/exam/' + data.file_name );
+            if( data.no == '1'){
+                $("#back").attr('disabled',true);
+            }else{
+                $("#back").attr('disabled',false);
+            }
+            if( data.no == data.num ){
+                $("#next").attr('disabled',true);
+            }else{
+                $("#next").attr('disabled',false);
+            }
+            console.log( data.answers );
+            if( data.answers != null ){
+                $('input[value="' + data.answers + '"]').prop('checked', true);
+            }else{
+                $('input[name="ans"]').prop('checked',false);
+            }
+            //$("#content_area").html( data.content );
+            //$("#textarea").val("");
+            $("#state").val( 'end' );
+        }
+    }).fail(function(xhr,satus,error){
+        console.log(status + ":" + error );
+    })
+}
+</script>
 </body>  
 </html>

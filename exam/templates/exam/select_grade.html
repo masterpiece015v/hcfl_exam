@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 </head>
 <body>
     
@@ -21,13 +22,13 @@
             </div>
         </div>
 
-        <div class="row" style="margin-top:100px;">
+        <div class="row" style="margin-top:20px;">
             <div class="col">
                 <h1>級の選択</h1>
                 <table class="table">
                 {% for item in question %}
                 <tr>
-                <form action="{% url 'question' %}" method="post">
+                <form action="" method="post" id="form-area">
                     {% csrf_token %}
                     <td><input type="text" value="{{kind}}" name="kind" class="form-control" size="5" readonly></td>
                     <td><input type="text" value="{{item.grade}}" name="grade" class="form-control" size="5" readonly></td>
@@ -40,7 +41,8 @@
                         <option>30</option>
                     </select>
                     </td>
-                    <td><input type="submit" value="select" class="btn btn-primary"></td>
+                    <td><input type="button" value="cbt" class="btn btn-primary" id="cbt"></td>
+                    <td><input type="button" value="print" class="btn btn-primary" id="print"></td>
                 </form>
                 </tr>
                 {% endfor %} 
@@ -49,6 +51,45 @@
             </div>
         </div>
     </div>
-
+    <script>
+    function getCookie( name ){
+        var cookieValue = null;
+        if( document.cookie && document.cookie !== ''){
+            var cookies = document.cookie.split(';');
+            for( var i = 0 ; i < cookies.length; i++ ){
+                var cookie = cookies[i].trim();
+                if( cookie.substring(0,name.length + 1)===(name+'=')){
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    var csrftoken = getCookie('csrftoken');
+    
+    function csrfSafeMethod( method ){
+        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+    }
+    $.ajaxSetup({
+        beforeSend: function( xhr , settings){
+            if(!csrfSafeMethod(settings.type) && !this.crossDomain){
+                xhr.setRequestHeader("X-CSRFToken",csrftoken);
+            }
+        }
+    })
+    
+    window.addEventListener("load",function(){
+        $("#cbt").on("click",function(){
+            $("#form-area").attr('action',"{% url 'question' %}")
+            $("#form-area").submit()
+        });
+        $("#print").on("click",function(){
+            $("#form-area").attr('action',"{% url 'question_print' %}")
+            $("#form-area").submit()
+        });
+    });
+    
+    </script>
 </body>  
 </html>

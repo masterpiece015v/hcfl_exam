@@ -5,7 +5,7 @@ from django.db.models import Max,Q
 #from openpyxl import Workbook
 from django.conf import settings
 import os,json,random,string
-
+from django.http.response import JsonResponse
 
 # Create your views here.
 
@@ -82,17 +82,15 @@ def select_grade( request , kind ):
 def question( request ):
     if request.method == 'POST':
         user = User.objects.filter(user_id=request.session['user_id']).first()
+        #科目の種類が含まれる（初回アクセス時）
         if 'kind' in request.POST:
             kind = request.POST['kind']
+            request.session['kind'] = kind
             grade = request.POST['grade']
             num = request.POST['num']
-
             question = Question.objects.filter(kind=kind,grade=grade)
             q_id_list = [que.id for que in question]
-            #print( q_id_list )
-            #print( random.sample(range(len(q_id_list)),int(num)))
             test_id_max = Test.objects.aggregate(Max('test_id'))
-            #print(test_id_max['test_id__max'] )
             test_id_list = [q_id_list[i] for i in random.sample(range(len(q_id_list)),int(num))]
             print( test_id_list )
             if test_id_max['test_id__max'] == None:
@@ -113,25 +111,70 @@ def question( request ):
 
             test = Test.objects.filter(test_id=test_id,seq_no=1).first()
             params = {
-                'test':test,
+                'file_name':test.question.file_name,
                 'test_id':test_id,
                 'no': 1,
                 'num' : num,
             }
             return render( request , 'exam/question.html',params )
         else:
-        
+            #次へボタンなどが押されたとき
             test_id = request.POST['test_id']
-            no = request.POST['no']
-            test = Test.objects.filter(test_id=test_id,seq_no=no).first()
+            state = request.POST['state']
+            print( state )
+            no = int( request.POST['no'] )
+            num = request.POST['num']
+            if 'ans' in request.POST:
+                ans = request.POST['ans']
+                test = Test.objects.filter(test_id=test_id,seq_no=no).first()
+                test.answers = ans
+                test.save()
+
+                #print( ans )
+            if( state == 'next'):
+                no += 1
+                test = Test.objects.filter(test_id=test_id,seq_no=no).first()
+            elif(state == 'back'):
+                no -= 1
+                test = Test.objects.filter(test_id=test_id,seq_no=no).first()
+            else:
+                #endが押されたとき
+                print( test_id )
+                test = Test.objects.filter( test_id=test_id )
+                result = []
+                score = 0
+                for item in test:
+                    dict = {}
+                    dict["question"] = item.question
+                    dict["answers"] = item.answers
+                    if item.question.answer == item.answers:
+                        score+=1
+                    result.append( dict )
+                params = {
+                    'user_name' : User.objects.filter(user_id=request.session['user_id']).first().user_name,
+                    'result' : result,
+                    'kind':request.session['kind'],
+                    'score':score,
+                    'num':num,
+                }
+
+                print( params )
+                return render( request, "exam/parsonal_result.html" , params)
+
+            
+            num = request.POST['num']
+            
             params = {
-                'test':test,
+                'file_name':test.question.file_name ,
                 'test_id':test_id,
                 'no': no,
                 'num' : num,
+                'answers':test.answers,
             }
+            print( test.answers )
 
-            return render( request , 'exam/question.html',params )
+            return JsonResponse( params )
+            #return render( request , 'exam/question.html',params )
     return render( request , 'exam/index.html' )
     
 def question_update( request ):
@@ -142,7 +185,10 @@ def question_update( request ):
             
             #削除
             id_list = [q[0] for q in json_data]
-            q = Question.objects.filter(~Q(id__in=id_list)).delete()
+            q = Question.objects.filter(~Q(id__in=id_list))
+            for item in q:
+                os.remove( os.path.join(settings.MEDIA_ROOT,'exam',item.file_name))
+                item.delete()
 
             #更新
             print( id_list )
@@ -202,6 +248,9 @@ def question_update( request ):
         }
         
         return render( request,'exam/question_update.html',params )
+
+def question_print( request ):
+    return render( request,"exam/question_print.html")
 
 def getrndstr(n):
     randlst = [random.choice(string.ascii_letters + string.digits) for i in range(n)]
