@@ -1,19 +1,71 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <title>ログイン</title>
+    <title>問題印刷</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" crossorigin="anonymous">
+    <style type="text/css">
+    @media print {
+        .menu{display:none;}
+    }
+    div.pagebreak{
+        page-break-after: always;
+    }
+    </style>
 </head>
 <body>
     
     <div class="container">
-        
-        <div class="row" style="margin-top:20px;">
-
+        <div class="row menu">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                      <li class="breadcrumb-item"><a href="{% url 'select_menu' %}">Select_Menu</a></li>
+                      <li class="breadcrumb-item"><a href="{% url 'select_grade' kind %}">{{kind}}</a></li>
+                      <li class="breadcrumb-item active" aria-current="page">Print</li>
+                    </ol>
+                  </nav>
+            </div>
         </div>
-        
+        <div class="row pagebreak" style="margin-top:20px;">
+            <div class="col">
+                <p>TEST_ID:{{test_id}}</p>
+                <table class="table caption-top">
+                {% for item in test %}
+                <tr>
+                    <td>
+                        <figure class="figure">
+                            <figcaption class="figure-caption">{{item.question.kind}}{{item.question.grade}}/第{{item.question.round}}回({{item.question.question_no}})</figcaption>
+                            <img src="/media/exam/{{item.question.file_name}}" alt="{{item.question.file_name}}">
+                            
+                        </figure>
+                        
+                    </td>
+                </tr>    
+                {% endfor %}
+                </table>
+            </div>
+        </div>
+
+
+        <div class="row">
+            <div class="col">
+                <p>TEST_ID:{{test_id}}</p>
+                <table class="table">
+                    <tr>
+                        <th>Question</th>
+                        <th>answer</th>
+                    </tr>
+                    {% for item in test %}
+                    <tr>
+                        <td>{{item.question.kind}}{{item.question.grade}}/第{{item.question.round}}回({{item.question.question_no}})</td>
+                        <td>{{item.question.answer}}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
     </div>
 
 </body>  
