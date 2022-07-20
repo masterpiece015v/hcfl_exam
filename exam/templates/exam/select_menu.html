@@ -21,14 +21,21 @@
         <div class="row" style="margin-top:20px;">
             <div class="col">
                 <h1>メニューの選択</h1>
-                {% for item in question %}
-                <a href="{% url 'select_grade' item.kind %}" class="btn btn-primary">{{item.kind}}</a>
-                {% endfor %}
-                <a href="#" class="btn btn-primary">成績</a>
+                <table class="table">
+                    {% for item in question %}
+                    <tr>
+                        <td><a href="{% url 'select_grade' item.kind %}">{{item.kind}}</a></td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                
+                
+                <p><a href="#">成績</a></p>
 
                 {% if super_user %}
-                <a href="#" class="btn btn-primary">学生成績</a>
-                <a href="{% url 'question_update' %}" class="btn btn-primary">問題更新</a>
+                <p><a href="#">学生成績</a></p>
+                <p><a href="{% url 'question_update' %}">問題更新</a></p>
+                <p><a href="{% url 'user_update' %}">ユーザー更新</a></p>
                 {% endif %}
             </div>
         </div>

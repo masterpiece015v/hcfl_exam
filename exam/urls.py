@@ -26,4 +26,5 @@ urlpatterns = [
     path('question/<int:no>/<int:test_id>/<str:ans>/',views.question,name='question'),
     path('question_update/',views.question_update,name='question_update'),
     path('question_print/',views.question_print,name='question_print'),
+    path('user_update/',views.user_update,name='user_update'),
 ]

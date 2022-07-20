@@ -25,13 +25,13 @@
 
         <div class="row" style="margin-top:20px;">
             <div class="col">
-                <h1>問題の更新</h1>
+                <h1>ユーザーの更新</h1>
             </div>
         </div>
         
         <div class="row">
             <div class="col">
-                <form action="{% url 'question_update' %}" method="post" >
+                <form action="{% url 'user_update' %}" method="post" >
 
                     {% csrf_token %}
                     <input type="text" id="data" name="data" hidden>
@@ -53,19 +53,14 @@
     <script>
         var data = [
             {% for item in data %}
-                [{{item.id}},
-                '{{item.kind}}',
-                '{{item.grade}}',
-                {{item.round}},
-                {{item.question_no}},
-                '{{item.answer}}',
-                '{{item.file_name}}',
-                '<form action={% url "question_update" %} method="post" enctype="multipart/form-data">' + 
-                '{% csrf_token %}' +
-                '<input type="text" value="{{item.id}}" name="id" hidden>' +
-                '<input type="file" name="file">' +
-                '<input type="submit" value="up">' +
-                '</form>'],
+                [
+                {{item.id}},
+                '{{item.user_id}}',
+                '{{item.password}}',
+                '{{item.user_name}}',
+                '{{item.group_name}}',
+                '{{item.super_user}}',
+                ],
             {% endfor %}
         ]
         var grid = document.getElementById('grid');
@@ -73,16 +68,14 @@
             grid,
             {
                 data:data,
-                colHeaders:['id','kind','grade','round','no','answer','file_name','up'],
+                colHeaders:['id','user_id','password','user_name','group_name','super_user'],
                 columns:[
                     {type:'numeric',readOnly:true},
                     {type:'text'},
-                    {type:'text'},
-                    {type:'numeric'},
-                    {type:'numeric'},
+                    {type:'password'},
                     {type:'text'},
                     {type:'text'},
-                    {renderer:'html'},
+                    {type:'checkbox'},
                 ],
                 columnSorting:true,
                 contextMenu:true,

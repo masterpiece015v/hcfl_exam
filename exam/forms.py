@@ -8,11 +8,12 @@ class LoginForm( forms.Form ):
 class UserForm( forms.ModelForm ):
     class Meta:
         model = User
-        fields = ['user_id','password','user_name']
+        fields = ['user_id','password','user_name','group_name']
         widgets ={
             'user_id':forms.TextInput(attrs={'class':'form-control'}),
             'password':forms.TextInput(attrs={'class':'form-control'}),
-            'user_name':forms.TextInput(attrs={'class':'form-control'})
+            'user_name':forms.TextInput(attrs={'class':'form-control'}),
+            'group_name':forms.TextInput(attrs={'class':'form-control'})
         }
 
 class UploadFileForm( forms.Form ):

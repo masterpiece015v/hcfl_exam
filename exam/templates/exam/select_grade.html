@@ -41,8 +41,19 @@
                         <option>30</option>
                     </select>
                     </td>
+                    
                     <td><input type="button" value="cbt" class="btn btn-primary" id="cbt"></td>
+                    {% if super_user %}
+                    <td>
+                    <select name="group" class="form-control">
+                        {% for item in group %}
+                            <option>{{item.group_name}}</option>
+                        {% endfor %}
+                    </select>
+                    </td>
                     <td><input type="button" value="print" class="btn btn-primary" id="print"></td>
+
+                    {% endif %}
                 </form>
                 </tr>
                 {% endfor %} 

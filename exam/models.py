@@ -7,6 +7,7 @@ class User( models.Model ):
     user_id = models.CharField(max_length=40)
     password = models.CharField(max_length=40)
     user_name = models.CharField(max_length=40)
+    group_name = models.CharField(max_length=40,null=True,blank=True)
     super_user = models.BooleanField(default=False)
 
 class Question( models.Model ):
