@@ -253,7 +253,41 @@ def question_update( request ):
         return render( request,'exam/question_update.html',params )
 
 def question_print( request ):
-    return render( request,"exam/question_print.html")
+    if request.method == 'POST':
+        kind = request.POST['kind']
+        request.session['kind'] = kind
+        grade = request.POST['grade']
+        num = request.POST['num']
+        question = Question.objects.filter(kind=kind,grade=grade)
+        q_id_list = [que.id for que in question]
+        test_id_max = Test.objects.aggregate(Max('test_id'))
+        test_id_list = [q_id_list[i] for i in random.sample(range(len(q_id_list)),int(num))]
+        user = User.objects.filter(user_id=request.session["user_id"]).first()
+
+        print( test_id_list )
+        if test_id_max['test_id__max'] == None:
+            test_id = 1
+        else:
+            test_id = test_id_max['test_id__max'] + 1
+        seq = 1
+        for i in test_id_list:
+            q = Question.objects.get(id=i)
+            t = Test(
+            test_id = test_id,
+            seq_no = seq,
+            user = user,
+            question = q,
+            )
+            t.save()
+            seq += 1
+
+        test = Test.objects.filter(test_id=test_id)
+        params = {
+            'test':test,
+            'test_id':test_id,
+            'kind':kind,
+        }
+        return render( request , 'exam/question_print.html',params )
 
 def getrndstr(n):
     randlst = [random.choice(string.ascii_letters + string.digits) for i in range(n)]
