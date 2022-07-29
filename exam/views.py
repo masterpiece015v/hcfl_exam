@@ -1,14 +1,17 @@
 from django.shortcuts import render
 from .forms import UserForm,LoginForm
-from .models import User,Question,Test
+from .models import User,Question,Test,Result
 from django.db.models import Max,Q
 #from openpyxl import Workbook
 from django.conf import settings
 import os,json,random,string
 from django.http.response import JsonResponse
+from .markreader import get_answer_list
+from django.core import serializers
 
 # Create your views here.
 
+#ログイン
 def index( request ):
     params = {
         'form':LoginForm(),
@@ -34,6 +37,7 @@ def index( request ):
     
     return render( request,'exam/index.html',params )
 
+#トップのメニュー画面
 def select_menu( request ):
     question = Question.objects.distinct().values('kind')
     print( question )
@@ -44,6 +48,7 @@ def select_menu( request ):
 
     return render(request , 'exam/select_menu.html',params)
 
+#ユーザの新規作成
 def new_user( request ):
     params ={
         'form':UserForm(),
@@ -69,6 +74,7 @@ def new_user( request ):
 
     return render( request,'exam/new_user.html',params )
 
+#級を選択する画面
 def select_grade( request , kind ):
     question = Question.objects.filter(kind=kind).distinct().values('grade')
     group = User.objects.distinct().values('group_name')
@@ -82,6 +88,7 @@ def select_grade( request , kind ):
 
     return render( request , 'exam/select_grade.html',params)
 
+#cbt試験画面
 def question( request ):
     if request.method == 'POST':
         user = User.objects.filter(user_id=request.session['user_id']).first()
@@ -95,26 +102,35 @@ def question( request ):
             q_id_list = [que.id for que in question]
             test_id_max = Test.objects.aggregate(Max('test_id'))
             test_id_list = [q_id_list[i] for i in random.sample(range(len(q_id_list)),int(num))]
-            print( test_id_list )
+            
+            # 最大テストidの取得
             if test_id_max['test_id__max'] == None:
                 test_id = 1
             else:
                 test_id = test_id_max['test_id__max'] + 1
+            
+            #ランダムなテストを作る
             seq = 1
             for i in test_id_list:
                 q = Question.objects.get(id=i)
                 t = Test(
-                test_id = test_id,
-                seq_no = seq,
-                user = user,
-                question = q,
+                    test_id = test_id,
+                    seq_no = seq,
+                    user = user,
+                    question = q,
                 )
                 t.save()
                 seq += 1
 
-            test = Test.objects.filter(test_id=test_id,seq_no=1).first()
+            test = Test.objects.filter(test_id=test_id)
+
+            #解答テーブルを作る
+            for item in test:
+                r = Result(test=item,ans_user=user)
+                r.save()
+
             params = {
-                'file_name':test.question.file_name,
+                'file_name':test.first().question.file_name,
                 'test_id':test_id,
                 'no': 1,
                 'num' : num,
@@ -124,33 +140,35 @@ def question( request ):
             #次へボタンなどが押されたとき
             test_id = request.POST['test_id']
             state = request.POST['state']
-            print( state )
             no = int( request.POST['no'] )
             num = request.POST['num']
+            user = User.objects.filter(user_id=request.session['user_id']).first()
+            
+            ret = Result.objects.filter(test__test_id=test_id,test__seq_no=no,ans_user=user).first()
+            
             if 'ans' in request.POST:
                 ans = request.POST['ans']
-                test = Test.objects.filter(test_id=test_id,seq_no=no).first()
-                test.answers = ans
-                test.save()
+                ret.answers = ans
+                ret.save()
 
-                #print( ans )
             if( state == 'next'):
                 no += 1
                 test = Test.objects.filter(test_id=test_id,seq_no=no).first()
+                print(test.question)
             elif(state == 'back'):
                 no -= 1
                 test = Test.objects.filter(test_id=test_id,seq_no=no).first()
             else:
                 #endが押されたとき
                 print( test_id )
-                test = Test.objects.filter( test_id=test_id )
+                ret = Result.objects.filter(test__test_id=test_id,ans_user=user)
                 result = []
                 score = 0
-                for item in test:
+                for item in ret:
                     dict = {}
-                    dict["question"] = item.question
+                    dict["question"] = item.test.question
                     dict["answers"] = item.answers
-                    if item.question.answer == item.answers:
+                    if item.test.question.answer == item.answers:
                         score+=1
                     result.append( dict )
                 params = {
@@ -163,23 +181,23 @@ def question( request ):
 
                 print( params )
                 return render( request, "exam/parsonal_result.html" , params)
-
             
+            #nextとbackはjson返す
             num = request.POST['num']
-            
+            ret = Result.objects.filter(test__test_id=test_id,test__seq_no=no,ans_user=user).first()
             params = {
                 'file_name':test.question.file_name ,
                 'test_id':test_id,
                 'no': no,
                 'num' : num,
-                'answers':test.answers,
+                'answers':ret.answers,
             }
-            print( test.answers )
-
+            print( params )
             return JsonResponse( params )
             #return render( request , 'exam/question.html',params )
     return render( request , 'exam/index.html' )
-    
+
+# 問題を更新する
 def question_update( request ):
     if request.method == 'POST':
         if 'data' in request.POST:
@@ -252,19 +270,23 @@ def question_update( request ):
         
         return render( request,'exam/question_update.html',params )
 
+# テストを作って問題を印刷する
 def question_print( request ):
     if request.method == 'POST':
         kind = request.POST['kind']
         request.session['kind'] = kind
         grade = request.POST['grade']
         num = request.POST['num']
+        group = request.POST['group']
         question = Question.objects.filter(kind=kind,grade=grade)
         q_id_list = [que.id for que in question]
         test_id_max = Test.objects.aggregate(Max('test_id'))
         test_id_list = [q_id_list[i] for i in random.sample(range(len(q_id_list)),int(num))]
+        
+        #ログインユーザ
         user = User.objects.filter(user_id=request.session["user_id"]).first()
 
-        print( test_id_list )
+        #ランダムに作る
         if test_id_max['test_id__max'] == None:
             test_id = 1
         else:
@@ -273,26 +295,35 @@ def question_print( request ):
         for i in test_id_list:
             q = Question.objects.get(id=i)
             t = Test(
-            test_id = test_id,
-            seq_no = seq,
-            user = user,
-            question = q,
+                test_id = test_id,
+                seq_no = seq,
+                user = user,
+                question = q,
             )
             t.save()
             seq += 1
-
         test = Test.objects.filter(test_id=test_id)
+        user = User.objects.filter(group_name=group)
         params = {
             'test':test,
             'test_id':test_id,
             'kind':kind,
+            'user':user,
         }
+
+        #resultを作る
+        for t in test:
+            for u in user:
+                r = Result(test=t,ans_user=u)
+                r.save()
         return render( request , 'exam/question_print.html',params )
 
+# ランダムな文字列を取得する
 def getrndstr(n):
     randlst = [random.choice(string.ascii_letters + string.digits) for i in range(n)]
     return ''.join(randlst)
 
+# ユーザを表で更新する
 def user_update( request ):
     if request.method == 'POST':
         if 'data' in request.POST:
@@ -371,327 +402,112 @@ def user_update( request ):
         
         return render( request,'exam/user_update.html',params )
 
-# 解答のアップロード
-class AnswerUpload():
-    # ページの表示
-    def answerupload( request ):
+# 解答のアップロードajax
+def ajax_answer_upload_imgup( request ):
+    # アップするファイルのパス
+    media_path = os.path.join(settings.STATIC_ROOT,"exam","image","answer")
+    print( request.POST )
+    # リクエストにfileが含まれている
+    if 'file' in request.FILES:
 
-        securecheck( request )
-        u_admin = request.session['u_admin']
-        # アップするファイルのパス
-        o_id = request.session['o_id']
-        media_path = os.path.join(settings.STATIC_ROOT,"jg","answer",o_id)
+        upfiles = request.FILES.getlist('file')
 
-        if request.method != 'POST':
-            answerimage = AnswerImage.objects.all()
-            #リストの再取得
-            filelist = []
-            for file in answerimage:
-                filelist.append( file )
-            return render(request, 'jg/answerupload.html', {"filelist": filelist,'u_admin':u_admin})
+        #複数ファイルのアップは拒否
+        #if len(upfiles)>1:
+        #    return render(request, 'exam/answerupload.html',{"message": "ファイルのアップロードは1つずつにしてください。",'u_admin':u_admin})
 
-        # リクエストにfileが含まれている
-        if 'file' in request.FILES:
+        #複数のファイルがアップロードされる
+        list = []
+        for uf in upfiles:
+            files = os.listdir( media_path )
+            if len(files)+1 < 10:
+                num = "00" + str( len(files)+1 )
+            elif len(files)+1 < 100:
+                num = "0" + str( len(files)+1)
+            else:
+                num = str(len(files)+1)
+            filename = "answer%s.jpg"%num
+            filepath = os.path.join( media_path , filename )
+            dest = open( filepath ,'wb+')
 
-            upfiles = request.FILES.getlist('file')
+            for chunk in uf:
+                dest.write( chunk )
 
-            #複数ファイルのアップは拒否
-            #if len(upfiles)>1:
-            #    return render(request, 'exam/answerupload.html',{"message": "ファイルのアップロードは1つずつにしてください。",'u_admin':u_admin})
-
-            #複数のファイルがアップロードされる
-            list = []
-            for uf in upfiles:
-                files = os.listdir( media_path )
-                if len(files)+1 < 10:
-                    num = "00" + str( len(files)+1 )
-                elif len(files)+1 < 100:
-                    num = "0" + str( len(files)+1)
-                else:
-                    num = str(len(files)+1)
-                filename = "answer%s.jpg"%num
-                filepath = os.path.join( media_path , filename )
-                dest = open( filepath ,'wb+')
-
-                for chunk in uf:
-                    dest.write( chunk )
-
-                # 画像認識
-                org_id, test_id, user_id, answerlist = get_answer_list(filepath)
-
-                print( "%s,%s,%s"%(org_id,test_id,user_id) )
-                print( answerlist )
-
-                # 登録チェック
-                check_answer = ResultTest.objects.filter( t_id=test_id,u_id=user_id )
-
-                # すでにテストID＋ユーザIDが存在する場合
-                if len( check_answer ) >= 1:
-                    dict = {'t_id':test_id,'u_id':user_id,'exists':1}
-                    list.append( dict )
-                else:
-                    # 解答をResultTestTempに登録する
-                    date = datetime.datetime.now()
-                    cnt = 0
-                    for answer in answerlist:
-                        if cnt < 80:
-                            if answer[1] == "未回答" or answer[1] == "複数回答":
-                                add_rt = ResultTestTemp(t_id=test_id, t_num=code4(answer[0]), r_answer='', r_date=date, u_id=user_id)
-                            else:
-                                add_rt = ResultTestTemp(t_id=test_id,t_num=code4(answer[0]),r_answer=answer[1],r_date=date,u_id=user_id)
-                            add_rt.save()
-                        cnt = cnt + 1
-                    dict = {'t_id':test_id,'u_id':user_id,'exists':0}
-                    list.append( dict )
-            return render(request, 'jg/answerupload.html' , { 'list':list ,'u_admin':u_admin})
-
-        elif 'del' in request.POST:
-            image = request.POST['del']
-            AnswerImage.objects.filter(image=image).delete()
-            os.remove( os.path.join( media_path , image ))
-
-            # リストの再取得
-            answerimage = AnswerImage.objects.all()
-            filelist = []
-            for file in answerimage:
-                filelist.append( file )
-
-            return render( request, 'jg/answerupload.html' , { "filelist" : filelist ,'u_admin':u_admin})
-
-    # insert
-    def ajax_answerinsert( request):
-        c_dic = byteToDic(request.body)
-        o_id = request.session['o_id']
-        print( c_dic )
-        old_t_id = c_dic['old_t_id']
-        old_u_id = c_dic['old_u_id']
-        new_t_id = c_dic['new_t_id']
-        new_u_id = c_dic['new_u_id']
-        answerlist = c_dic['answerlist']
-
-        media_path = os.path.join(settings.STATIC_ROOT, "exam", "answer", o_id)
-
-        # 登録チェック
-        check_answer = ResultTest.objects.filter(t_id=new_t_id, u_id=new_u_id)
-
-        # すでにテストID＋ユーザIDが存在する場合
-        if len(check_answer) >= 1:
-            for i, a in enumerate(answerlist):
-                result = ResultTest.objects.filter(t_id=new_t_id, u_id=new_u_id, t_num=code4(i + 1))
-                result.update(r_answer=a[1])
-            return HttpResponseJson({'message': '更新しました。'})
-        else:
-            # 解答をResultTestに登録する
-            date = datetime.datetime.now()
-            # テスト数を取得
-            num = LittleTest.objects.filter(o_id=o_id, t_id=new_t_id).count()
-
-            cnt = 0
-            for answer in answerlist:
-                if cnt < num:
-                    if answer[1] == "未回答" or answer[1] == "複数回答":
-                        add_rt = ResultTest(t_id=new_t_id, t_num=code4(answer[0]), r_answer='',r_date=date,u_id=new_u_id)
-                    else:
-                        add_rt = ResultTest(t_id=new_t_id, t_num=code4(answer[0]), r_answer=answer[1], r_date=date,u_id=new_u_id)
-                    add_rt.save()
-                cnt = cnt + 1
-
-            # ResultTestTempのデータを削除する
-            ResultTestTemp.objects.filter(t_id=old_t_id,u_id=old_u_id).delete()
-
-            # ファイルを削除する
-            #filelist = glob.glob(media_path + '/*')
-
-            #for file in filelist:
-                #print(os.path.join(media_path, file))
-                # os.remove( os.path.join(media_path, file ) )
-        c_dic['message'] = "追加できました。"
-        return HttpResponseJson(c_dic)
-
-    # すべて追加
-    def ajax_answerallinsert(request):
-        c_dic = byteToDic(request.body)
-        o_id = request.session['o_id']
-
-        list = c_dic['list']
-        dict = {'list':[]}
-
-        for l in list:
+            # 画像認識
+            group_id, test_id, user_id, answer_list = get_answer_list(filepath)
+            
+            dic = {'group_id':group_id,'test_id':test_id,'user_id':user_id,'answer_list':answer_list}
+            print( "%s,%s,%s"%(group_id,test_id,user_id) )
+            print( answer_list )
+            list.append( dic )
             # 登録チェック
-            t_id = l['t_id']
-            u_id = l['u_id']
-            check_answer = ResultTest.objects.filter(t_id=t_id, u_id=u_id).distinct()
+            #check_answer = ResultTest.objects.filter( t_id=test_id,u_id=user_id )
 
             # すでにテストID＋ユーザIDが存在する場合
-            if len(check_answer) >= 1:
-                dic = {'t_id':t_id , 'u_id':u_id}
-                dict['list'].append( dic )
+            #if len( check_answer ) >= 1:
+            #    dict = {'t_id':test_id,'u_id':user_id,'exists':1}
+            #    list.append( dict )
+            #else:
+                # 解答をResultTestTempに登録する
+            #    date = datetime.datetime.now()
+            #    cnt = 0
+            #    for answer in answerlist:
+            #        if cnt < 80:
+            #            if answer[1] == "未回答" or answer[1] == "複数回答":
+            #                add_rt = ResultTestTemp(t_id=test_id, t_num=code4(answer[0]), r_answer='', r_date=date, u_id=user_id)
+            #            else:
+            #                add_rt = ResultTestTemp(t_id=test_id,t_num=code4(answer[0]),r_answer=answer[1],r_date=date,u_id=user_id)
+            #            add_rt.save()
+            #        cnt = cnt + 1
+            #    dict = {'t_id':test_id,'u_id':user_id,'exists':0}
+            #    list.append( dict )
+        return JsonResponse({'list':list})
 
+
+# 解答のアップロード
+def answer_upload( request ):
+    return render(request, 'exam/answer_upload.html')
+
+def ajax_answer_update( request ):
+    #print( request.POST )
+    data = request.POST['data']
+    json_data = json.loads( data )
+
+    for item in json_data:
+        group_id = item['0']
+        test_id = item['1']
+        user_id = item['2']
+        seq_no = item['3']
+        answers = item['4']
+        u = User.objects.filter(user_id=user_id).first()
+        #userが存在しない
+        if u == None:
+            return JsonResponse({'data':'error'})
+        t = Test.objects.filter(test_id=test_id,user=u,seq_no=seq_no).first()
+        if t == None:
+            return JsonResponse({'data':'error'})
+        
+        #未回答でなければ登録
+        if answers != '未回答':
+            r = Result.objects.filter(test=t,ans_user=u).first()
+            if r == None:
+                #新規作成
+                r2 = Result(test=t,ans_user=u,answers=answers)
+                r2.save()
             else:
-                # 解答をResultTestに登録する
-                # date = datetime.datetime.now()
-                # テスト数を取得
-                num = LittleTest.objects.filter(o_id=o_id, t_id=t_id).count()
+                r.answers = answers
+                r.save()
 
-                cnt = 0
-                resulttesttemp = ResultTestTemp.objects.filter(t_id=t_id,u_id=u_id).valuse()
-                #answer = []
-                for r in resulttesttemp:
-                    if cnt < num:
-                        add_rt = ResultTest(t_id=r['t_id'], t_num=r['t_id'], r_answer=r['r_answer'], r_date=r['r_date'],u_id=r['u_id'])
-                        add_rt.save()
-                    cnt = cnt + 1
-
-                #ResultTestTempのデータを削除する
-                ResultTestTemp.objects.filter(t_id=t_id, u_id=u_id).delete()
-                dic = {'t_id': t_id, 'u_id': u_id}
-                dict['list'].append(dic)
-
-        return HttpResponseJson( dict )
-
-    # upload
-    def ajax_answerupload( request ):
-
-        c_dic = byteToDic(request.body)
-        o_id = request.session['o_id']
-
-        old_t_id = c_dic['old_t_id']
-        old_u_id = c_dic['old_u_id']
-        new_t_id = c_dic['new_t_id']
-        new_u_id = c_dic['new_u_id']
-        answerlist = c_dic['answerlist']
-
-        media_path = os.path.join(settings.STATIC_ROOT,"exam","answer",o_id)
-
-        # 新しいidと古いidが違えば、古いidのほうを消す
-        if new_t_id != old_t_id or new_u_id != old_u_id:
-            ResultTest.objects.filter(t_id=old_t_id,u_id=old_u_id).delete()
-
-        # 登録チェック
-        check_answer = ResultTest.objects.filter(t_id=new_t_id, u_id=new_u_id)
-
-        # すでにテストID＋ユーザIDが存在する場合は元のデータを更新
-        if len(check_answer) >= 1:
-            for i,a in enumerate( answerlist ):
-                result=ResultTest.objects.filter(t_id=new_t_id,u_id=new_u_id,t_num=code4(i+1))
-                result.update(r_answer=a[1])
-
-            return HttpResponseJson( {'message':'更新しました。'})
-        else:
-        #ない場合は追加する
-            # 解答をResultTestに登録する
-            date = datetime.datetime.now()
-
-            # テスト数を取得
-            num = LittleTest.objects.filter(o_id=o_id, t_id=new_t_id).count()
-
-            cnt = 0
-            for answer in answerlist:
-                if cnt < num:
-                    if answer[1] == "未回答" or answer[1] == "複数回答":
-                        add_rt = ResultTest(t_id=new_t_id, t_num=code4(answer[0]), r_answer='', r_date=date, u_id=new_u_id)
-                    else:
-                        add_rt = ResultTest(t_id=new_t_id, t_num=code4(answer[0]), r_answer=answer[1], r_date=date,u_id=new_u_id)
-                    add_rt.save()
-                cnt = cnt + 1
-        c_dic['message'] = "登録できました。"
-        return HttpResponseJson( c_dic )
-
-    # t_idとu_idからテストの結果を取得する
-    def ajax_getanswerlist(request):
-        c_dic = byteToDic(request.body)
-        o_id = request.session['o_id']
-
-        t_id = c_dic['t_id']
-        u_id = c_dic['u_id']
-        ex = c_dic['ex']
-
-        if ex == '未':
-            resulttest = ResultTestTemp.objects.filter(t_id=t_id,u_id=u_id).values('t_num','r_answer')
-        else:
-            resulttest = ResultTest.objects.filter(t_id=t_id, u_id=u_id).values('t_num', 'r_answer')
-
-        result = {'t_id':t_id,'u_id':u_id,'answerlist':[]}
-
-        for r in resulttest:
-            dict={'t_num':r['t_num'],'r_answer':r['r_answer']}
-            result['answerlist'].append( dict )
-
-        return HttpResponseJson( result )
-
-#解答用紙印刷
-class AnswerSheetPrint():
-    # ページの表示
-    def answersheetprint( request ):
-        o_id = request.session['o_id']
-        # URLにテストIDが含まれる場合
-        if 't_id' in request.GET:
-            t_id = request.GET.get('t_id')
-            test = LittleTest.objects.filter(o_id=o_id, t_id=t_id)
-            user = User.objects.filter(o_id=o_id)
-
-            t_list = []
-            for t in test:
-                dic = {}
-                dic['t_num'] = t.t_num
-                dic['q_id'] = t.q_id
-                t_list.append(dic)
-
-            u_list = []
-            for u in user:
-                dic = {}
-                dic['u_id'] = u.u_id
-                dic['u_name'] = u.u_name
-                u_list.append(dic)
-
-            list = {'t_list': t_list, 'u_list': u_list, 'o_id': o_id}
-
-            test = LittleTest.objects.filter(o_id=o_id).values('t_id', 't_date').distinct()
-            t_list = []
-            for t in test:
-                dic = {}
-                dic['t_id'] = t['t_id']
-                dic['t_date'] = t['t_date']
-                t_list.append(dic)
-
-            u_groups = User.objects.filter(o_id=o_id).values('u_group').distinct()
-            return render(request, 'jg/answersheetprint.html', {'test': t_list, 'u_groups':u_groups,'u_admin': request.session['u_admin'] , 't_id':t_id , 'list':list })
-
-        #URLにテストIDを含まない場合（初めてアクセス）
-        test = LittleTest.objects.filter(o_id=o_id).values('t_id','t_date').distinct()
-        list = []
-        for t in test:
-            dic = {}
-            dic['t_id'] = t['t_id']
-            dic['t_date'] = t['t_date']
-            list.append( dic )
-        u_groups = User.objects.filter(o_id=o_id).values('u_group').distinct()
-
-        return render( request, 'jg/answersheetprint.html',{'test':list,'u_groups':u_groups,'u_admin':request.session['u_admin'] })
-
-    # ajax
-    def ajax_answersheetprint( request ):
-        t_id = byteToDic( request.body )['t_id']
-        u_group = byteToDic( request.body)['u_group']
-        o_id = request.session['o_id']
-
-        test = LittleTest.objects.filter(o_id=o_id,t_id=t_id)
-        user = User.objects.filter(o_id=o_id,u_group=u_group)
-
-        t_list = []
-        for t in test:
-            dic = {}
-            dic['t_num'] = t.t_num
-            dic['q_id'] = t.q_id
-            t_list.append( dic )
-
-        u_list = []
-        for u in user:
-            dic = {}
-            dic['u_id'] = u.u_id
-            dic['u_name'] = u.u_name
-            u_list.append( dic )
-
-        list = {'t_list':t_list,'u_list':u_list , 'o_id':o_id }
-        #print( list )
-        return HttpResponseJson( list )
+            print( "{},{},{},{}".format(group_id,test_id,user_id,str(seq_no)) )
+    #print( data )
+    ret_test = Result.objects.filter(test=t,ans_user=u).values('test__test_id','test__seq_no','ans_user__user_id','question')
+    print( ret_test )
+    ret_list = []
+    for item in ret_test:
+        dic = {}
+        dic['test_id'] = item['test_id']
+        dic['seq_no'] = item['seq_no']
+        dic['user_id'] = item['user__user_id']
+        dic['question']
+    ret_test = serializers.serialize("json", ret_test)
+    return JsonResponse({'data':ret_test})

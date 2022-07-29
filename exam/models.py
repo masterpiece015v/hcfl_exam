@@ -23,5 +23,9 @@ class Test( models.Model ):
     seq_no = models.IntegerField(default=0)
     user = models.ForeignKey(User,on_delete=models.CASCADE)
     question = models.ForeignKey(Question,on_delete=models.CASCADE)
+    
+class Result( models.Model ):
+    test = models.ForeignKey(Test,on_delete=models.CASCADE)
+    ans_user = models.ForeignKey(User,on_delete=models.CASCADE)
     answers = models.CharField(max_length=40,blank=True,null=True)
     update = models.DateTimeField(default=datetime.now)

@@ -27,4 +27,7 @@ urlpatterns = [
     path('question_update/',views.question_update,name='question_update'),
     path('question_print/',views.question_print,name='question_print'),
     path('user_update/',views.user_update,name='user_update'),
+    path('answer_upload/',views.answer_upload,name='answer_upload'),
+    path('ajax_answer_upload_imgup/',views.ajax_answer_upload_imgup,name='ajax_answer_upload_imgup'),
+    path('ajax_answer_update/',views.ajax_answer_update,name='ajax_answer_update'),
 ]

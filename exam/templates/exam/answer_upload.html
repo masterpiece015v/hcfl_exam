@@ -1,0 +1,189 @@
+{% load static %}
+<!doctype html>
+<html lang="ja">
+<head>
+    <title></title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> 
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static 'exam/css/handsontable.full.css' %}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="row" style="margin-top:20px;">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                      <li class="breadcrumb-item"><a href="{% url 'select_menu' %}">Select_Menu</a></li>
+                      <li class="breadcrumb-item active" aria-current="page">成績アップ</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+
+        <div class="row" style="margin-top:20px;">
+            <div class="col">
+                <p>複数画像アップに対応しました。</p>
+                <!--解答ファイルをアップロードするフォーム-->
+                
+                {% csrf_token %}
+                <form id="form_imgup" enctype="multipart/form-data">
+                    <table>
+                        <tr>
+                            <td>
+                                <input type="file" name="file" multiple accept="image/jpeg" class="form-control">
+                            </td>
+                            <td style="width:150px;">
+                                <input type="button" value="画像up" class="btn btn-primary" id="btn_imgup" data-toggle="modal" data-target="#modal-progress" style="width:100px">
+                            </td>
+                            <td style="width:150px;">
+                                <input type="button" value="更新" class="btn btn-primary" id="btn_update" style="width:100px">
+                            </td>
+                        </tr>
+                    </table>
+                </form>
+            </div>
+        </div>
+        <div class="row" style="margin-top:20px;">
+            <div class="col-3">
+                <select class="form-control" id="select_test" size="15">
+
+                </select>
+            </div>
+            <div class="col-9">
+                <div id="grid"></div>
+            </div>
+        </div>
+
+    </div>
+    
+    <div class="modal" id="modal-progress" tabindex="-1" style="position:fixed;top:10px;left:10px;">
+        <div class="modal-dialog">
+            <div class="modal-content" style="width:800px">
+                <div class="modal-body">作成中です。しばらくお待ちください</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="{% static 'exam/js/handsontable.full.js' %}"></script>
+    <script type="text/javascript">
+    $(function(){
+        //CSRF Tokenを取得する
+        function getCSRFToken(){
+            var csrftoken = jQuery("[name=csrfmiddlewaretoken]").val();
+            return csrftoken;
+        }
+
+        var list;
+        var data = []
+        var grid = document.getElementById('grid');
+        
+        var table = new Handsontable(
+            grid,
+            {
+                data:data,
+                colHeaders:['group_id','test_id','user_id','seq_no','answers'],
+                columns:[
+                    {type:'text',width:80},
+                    {type:'text',width:80},
+                    {type:'text',width:80},
+                    {type:'numeric',width:60},
+                    {type:'text',width:60},
+                ],
+                columnSorting:true,
+                contextMenu:true,
+                copyPaste:true,
+            }
+        );
+
+        //Handsontableを更新後サーバーのデータベースを更新
+        $("#btn_update").on('click', function(){
+            $form = $("<form>");
+            $form.append( $("<input>").attr('name','data').val(JSON.stringify(data)));
+            //console.log( $form.children()[0].val() );
+            var formdata = new FormData($form.get(0));
+            console.log( formdata );
+
+            $.ajaxSetup({
+                beforeSend : function(xhr,settings ){
+                    xhr.setRequestHeader( "X-CSRFToken" , getCSRFToken() );
+                }
+            });
+            $.ajax({
+                url: "{% url 'ajax_answer_update' %}",
+                method: "POST",
+                data: formdata ,
+                timeout:10000,
+                cache : false,
+                contentType : false,
+                processData : false,
+                dataType : "html",
+            })
+            .done(function(data){
+                alert("done");
+            })
+        });
+        
+        //セレクトボックスを選択
+        $("#select_test").on('change',function(){
+
+            console.log( $(this).val() );
+            group_id = $(this).val().split(",")[0];
+            test_id = $(this).val().split(",")[1];
+            user_id = $(this).val().split(",")[2];
+
+            list.forEach(function(item){
+                if( item['group_id'] == group_id && item['test_id'] == test_id && item['user_id'] == user_id ){   
+                    var i = 0
+                    item['answer_list'].forEach(function(item2){
+                        table.setDataAtCell(i, 0, group_id);
+                        table.setDataAtCell(i, 1, test_id);
+                        table.setDataAtCell(i, 2, user_id);
+                        table.setDataAtCell(i, 3, item2[0] );
+                        table.setDataAtCell(i, 4, item2[1] );
+                        i = i + 1;
+                    });
+                }
+            });
+
+        });
+
+        //画像を送信する
+        $("#btn_imgup").on('click',function(){
+            var formdata = new FormData($('#form_imgup').get(0));
+            $.ajaxSetup({
+                beforeSend : function(xhr,settings ){
+                    xhr.setRequestHeader( "X-CSRFToken" , getCSRFToken() );
+                }
+            });
+            $.ajax({
+                url : "{% url 'ajax_answer_upload_imgup' %}",
+                type:"POST",
+                data:formdata,
+                cache : false,
+                contentType : false,
+                processData : false,
+                dataType : "html",
+            }).done(function(data,textStatus,jqXHR){
+                console.log( data );
+
+                list = JSON.parse(data)['list'];
+
+                $('#select_test').children().remove();
+                
+                list.forEach(function(item){
+                    console.log( item );
+                    $('#select_test').append( $('<option>').val(item['group_id']+","+item['test_id']+","+item["user_id"] ).text(item['group_id']+","+item['test_id']+","+item["user_id"] ) );
+                });
+                
+            }).fail(function(jqXHR,textStatus,errorThrown){
+
+            });
+        });
+
+
+    });
+    </script>
+</body>
+</html>

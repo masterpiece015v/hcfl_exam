@@ -33,6 +33,7 @@
                 <p><a href="#">成績</a></p>
 
                 {% if super_user %}
+                <p><a href="{% url 'answer_upload' %}">解答用紙をアップする</a></p>
                 <p><a href="#">学生成績</a></p>
                 <p><a href="{% url 'question_update' %}">問題更新</a></p>
                 <p><a href="{% url 'user_update' %}">ユーザー更新</a></p>

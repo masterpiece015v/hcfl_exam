@@ -1,0 +1,50 @@
+body {font-family: monospace; }
+    td.marker { border : 0px;}
+    p.user-name { margin-top:40px;}
+    table , tr, td ,th {
+        margin : 0px;
+        padding : 0px;
+        
+}
+table.mark-sheet{
+    margin-top : 5px;
+}
+td.user{
+    border : solid 1px #eee;
+    letter-spacing:0.5em;
+    font-size : 26px;
+    padding-left : 15px;
+    width : 236px;
+}
+
+table.mark-sheet th{
+    height : 46px;
+    text-align : center;
+}
+table.mark-sheet td{ 
+    width : 46px;
+    height : 46px;
+}
+table.mark-sheet td.maru{
+    text-align : center;
+    border-bottom : solid 1px #eee;
+    color : #efefef;
+    font-size : 24px;
+}
+table.mark-sheet td.t-num{
+    text-align : center;
+    border-left: solid 1px #eee;
+    border-bottom : solid 1px #eee;
+}
+table.mark-sheet th.t-num{
+    text-align :center;
+    border-bottom : solid 1px #eee;
+    border-left : solid 1px #eee;
+}
+table.mark-sheet th.t-head{
+    text-align : center;
+    border-bottom : solid 1px #eee;
+}
+table.mark-sheet td:last-child,table.mark-sheet th:last-child{
+    border-right : solid 1px #eee;
+}
